@@ -4,15 +4,15 @@ module Tx_Control(
     input logic clk,
     input logic reset_n,
     input logic startBTNC,
-    input logic COUNT,
+    input logic COUNT,Parity,
     output logic TX_load
     );
     
     
 typedef enum logic [1:0] {
         IDLE,
-        transmit
-        
+        Transmit,
+       ParityStop
     } state_t;
     
         state_t current_state, next_state;
@@ -31,16 +31,22 @@ typedef enum logic [1:0] {
         case (current_state)
         
         IDLE: begin if(startBTNC ==1) 
-                    next_state = transmit;    
+                    next_state = Transmit;    
                     else 
                     next_state = IDLE;
                 end
-        transmit: begin  if(~COUNT) 
+        Transmit: begin  if(COUNT && !Parity ) //10
                     next_state = IDLE;
-                   else 
-                      next_state = transmit; 
-                end 
-                
+                   else if(COUNT && Parity )   //11
+                      next_state = ParityStop; 
+                      else                    
+                      next_state = Transmit; 
+                 end 
+        ParityStop: begin 
+                    next_state = IDLE;
+
+                 end
+                 
             default: next_state = IDLE;
         endcase
     end
@@ -49,11 +55,15 @@ typedef enum logic [1:0] {
          always_comb begin
                 case (current_state)
                     IDLE: begin
-                        TX_load =0;
+                        TX_load =1;
                     end
                     
-                    transmit: begin
-                        TX_load=1;
+                    Transmit: begin
+                        TX_load=0;
+                    end
+                     ParityStop: begin
+                        TX_load =0;
+                        
                     end
                     
                     default:  TX_load = 0;
